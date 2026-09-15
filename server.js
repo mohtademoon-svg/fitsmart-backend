@@ -8,12 +8,12 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 
-// تفعيل CORS والحد الأقصى لحجم البيانات
+// إعدادات الوسائط وCORS
 app.use(cors());
 app.use(express.json({ limit: '15mb' }));
 
 // =========================================================================
-// قائمة الأكواد السرية الـ 300 (المخزنة على السيرفر فقط ومحمية من المستخدمين)
+// قائمة الأكواد السرية الـ 300 (المخزنة على السيرفر فقط)
 // =========================================================================
 const monthlyCodes = [
   "MTH-9K4X-7R2Q","MTH-2N8L-5W9P","MTH-6T1Z-8K3V","MTH-4X7B-9L1M","MTH-8J2P-4V7C",
@@ -90,24 +90,42 @@ monthlyCodes.forEach(c => serverLicenseKeys[c] = { type: 'monthly', days: 30, na
 yearlyCodes.forEach(c => serverLicenseKeys[c] = { type: 'yearly', days: 365, name: 'سنوي' });
 lifetimeCodes.forEach(c => serverLicenseKeys[c] = { type: 'lifetime', days: 99999, name: 'مدى الحياة' });
 
+// =========================================================================
+// سجل الأكواد المستخدمة عالمياً (يمنع استخدام الكود لأكثر من شخص)
+// =========================================================================
+const usedCodesGlobal = new Set();
+
 // فحص جاهزية السيرفر
 app.get('/', (req, res) => {
   res.send('FitSmart Backend is running successfully!');
 });
 
 // =========================================================================
-// 1. مسار التحقق الآمن من الكود (API Endpoint)
+// 1. مسار التحقق الآمن مع حرق الكود لمرة واحدة فقط
 // =========================================================================
 app.post('/api/verify-code', (req, res) => {
   const { code } = req.body;
   if (!code) {
-    return res.status(400).json({ valid: false, message: 'يرجى إرسال الكود' });
+    return res.status(400).json({ valid: false, message: 'يرجى إدخال الكود' });
   }
 
   const cleanCode = code.trim().toUpperCase();
+
+  // 1. التحقق هل الكود مستهلك عالمياً مسبقاً
+  if (usedCodesGlobal.has(cleanCode)) {
+    return res.status(400).json({
+      valid: false,
+      message: 'عذراً، تم استخدام هذا الكود وتفعيله مسبقاً!'
+    });
+  }
+
+  // 2. التحقق من وجود الكود في قاعدة السيرفر
   const planInfo = serverLicenseKeys[cleanCode];
 
   if (planInfo) {
+    // تسجيل الكود كمستهلك فوراً داخل السيرفر لمنع استخدامه ثانية
+    usedCodesGlobal.add(cleanCode);
+
     return res.json({
       valid: true,
       type: planInfo.type,
