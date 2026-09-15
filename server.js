@@ -22,7 +22,7 @@ app.get('/', (req, res) => {
 // المسار الرئيسي لمعالجة طلبات الذكاء الاصطناعي
 app.post('/api/gemini', async (req, res) => {
   try {
-    const { payload, model = 'gemini-1.5-flash' } = req.body;
+    const { payload, model = 'gemini-3.6-flash' } = req.body;
 
     if (!payload) {
       return res.status(400).json({ error: 'البيانات المرسلة غير مكتملة' });
