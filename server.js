@@ -32,34 +32,23 @@ app.post('/api/gemini', async (req, res) => {
       return res.status(500).json({ error: 'مفتاح GEMINI_API_KEY غير معرّف في بيئة السيرفر' });
     }
 
-        const modelsToTry = [model, 'gemini-2.5-flash', 'gemini-2.0-flash'];
-    let apiResponse;
-    let data;
+                const targetModel = 'gemini-3.6-flash';
+    const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${targetModel}:generateContent?key=${GEMINI_API_KEY}`;
 
-    for (const currentModel of modelsToTry) {
-      const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${currentModel}:generateContent?key=${GEMINI_API_KEY}`;
-      apiResponse = await fetch(endpoint, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
-      });
-      data = await apiResponse.json();
+    const apiResponse = await fetch(endpoint, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
 
-      if (apiResponse.ok && !data.error) {
-        break;
-      }
+    const data = await apiResponse.json();
 
-      const errText = JSON.stringify(data.error || '');
-      if (!errText.includes('high demand') && !errText.includes('overloaded') && apiResponse.status !== 503) {
-        break;
-      }
-    }
-
-    if (!apiResponse || !apiResponse.ok || data.error) {
-      return res.status(apiResponse ? apiResponse.status : 500).json({
-        error: data && data.error ? data.error.message : 'فشل الرد من خوادم الذكاء الاصطناعي'
+    if (!apiResponse.ok || data.error) {
+      return res.status(apiResponse.status || 500).json({
+        error: data.error ? (data.error.message || data.error) : 'فشل الرد من خوادم الذكاء الاصطناعي'
       });
     }
+
 
     res.json(data);
   } catch (error) {
